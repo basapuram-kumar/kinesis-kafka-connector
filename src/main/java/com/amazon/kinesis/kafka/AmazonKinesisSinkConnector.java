@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.sink.SinkConnector;
 
@@ -29,15 +30,45 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 
 	public static final String METRICS_NAMESPACE = "metricsNameSpace";
 
-	public static final String AGGREGRATION_ENABLED = "aggregration";
+	public static final String AGGREGATION_ENABLED = "aggregation";
 
 	public static final String USE_PARTITION_AS_HASH_KEY = "usePartitionAsHashKey";
 
-	private static final String VERSION = "0.11.0.0";
+	public static final String FLUSH_SYNC = "flushSync";
+
+	public static final String SINGLE_KINESIS_PRODUCER_PER_PARTITION = "singleKinesisProducerPerPartition";
+
+	public static final String PAUSE_CONSUMPTION = "pauseConsumption";
+
+	public static final String OUTSTANDING_RECORDS_THRESHOLD = "outstandingRecordsThreshold";
+
+	public static final String SLEEP_PERIOD = "sleepPeriod";
+
+	public static final String SLEEP_CYCLES = "sleepCycles";
+
+	public static final String ROLE_ARN = "roleARN";
+
+	public static final String ROLE_SESSION_NAME = "roleSessionName";
+
+	public static final String ROLE_EXTERNAL_ID = "roleExternalID";
+
+	public static final String ROLE_DURATION_SECONDS = "roleDurationSeconds";
+
+	public static final String KINESIS_ENDPOINT = "kinesisEndpoint";
 
 	private String region;
 
 	private String streamName;
+
+	private String roleARN;
+
+	private String roleSessionName;
+
+	private String roleExternalID;
+
+	private String roleDurationSeconds;
+
+	private String kinesisEndpoint;
 
 	private String maxBufferedTime;
 
@@ -53,14 +84,31 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 
 	private String metricsNameSpace;
 
-	private String aggregration;
+	private String aggregation;
 
 	private String usePartitionAsHashKey;
+
+	private String flushSync;
+
+	private String singleKinesisProducerPerPartition;
+
+	private String pauseConsumption;
+
+	private String outstandingRecordsThreshold;
+
+	private String sleepPeriod;
+
+	private String sleepCycles;
 
 	@Override
 	public void start(Map<String, String> props) {
 		region = props.get(REGION);
 		streamName = props.get(STREAM_NAME);
+		roleARN = props.get(ROLE_ARN);
+		roleSessionName = props.get(ROLE_SESSION_NAME);
+		roleExternalID = props.get(ROLE_EXTERNAL_ID);
+		roleDurationSeconds = props.get(ROLE_DURATION_SECONDS);
+		kinesisEndpoint = props.get(KINESIS_ENDPOINT);
 		maxBufferedTime = props.get(MAX_BUFFERED_TIME);
 		maxConnections = props.get(MAX_CONNECTIONS);
 		rateLimit = props.get(RATE_LIMIT);
@@ -68,13 +116,18 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 		metricsLevel = props.get(METRICS_LEVEL);
 		metricsGranuality = props.get(METRICS_GRANUALITY);
 		metricsNameSpace = props.get(METRICS_NAMESPACE);
-		aggregration = props.get(AGGREGRATION_ENABLED);
+		aggregation = props.get(AGGREGATION_ENABLED);
 		usePartitionAsHashKey = props.get(USE_PARTITION_AS_HASH_KEY);
+		flushSync = props.get(FLUSH_SYNC);
+		singleKinesisProducerPerPartition = props.get(SINGLE_KINESIS_PRODUCER_PER_PARTITION);
+		pauseConsumption = props.get(PAUSE_CONSUMPTION);
+		outstandingRecordsThreshold = props.get(OUTSTANDING_RECORDS_THRESHOLD);
+		sleepPeriod = props.get(SLEEP_PERIOD);
+		sleepCycles = props.get(SLEEP_CYCLES);
 	}
 
 	@Override
 	public void stop() {
-		// TODO Auto-generated method stub
 
 	}
 
@@ -94,10 +147,26 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 			if (region != null)
 				config.put(REGION, region);
 
+			if (roleARN != null)
+				config.put(ROLE_ARN, roleARN);
+
+			if (roleSessionName != null)
+				config.put(ROLE_SESSION_NAME, roleSessionName);
+
+			if (roleExternalID != null)
+				config.put(ROLE_EXTERNAL_ID, roleExternalID);
+
+			if (roleDurationSeconds != null)
+				config.put(ROLE_DURATION_SECONDS, roleDurationSeconds);
+			else
+				config.put(ROLE_DURATION_SECONDS, "3600");
+
+			if (kinesisEndpoint != null)
+				config.put(KINESIS_ENDPOINT, kinesisEndpoint);
+
 			if (maxBufferedTime != null)
 				config.put(MAX_BUFFERED_TIME, maxBufferedTime);
 			else
-				// default value of 15000 ms
 				config.put(MAX_BUFFERED_TIME, "15000");
 
 			if (maxConnections != null)
@@ -130,15 +199,45 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 			else
 				config.put(METRICS_NAMESPACE, "KinesisProducer");
 
-			if (aggregration != null)
-				config.put(AGGREGRATION_ENABLED, aggregration);
+			if (aggregation != null)
+				config.put(AGGREGATION_ENABLED, aggregation);
 			else
-				config.put(AGGREGRATION_ENABLED, "false");
+				config.put(AGGREGATION_ENABLED, "false");
 
 			if (usePartitionAsHashKey != null)
 				config.put(USE_PARTITION_AS_HASH_KEY, usePartitionAsHashKey);
 			else
 				config.put(USE_PARTITION_AS_HASH_KEY, "false");
+
+			if(flushSync != null)
+				config.put(FLUSH_SYNC, flushSync);
+			else
+				config.put(FLUSH_SYNC, "true");
+
+			if(singleKinesisProducerPerPartition != null)
+				config.put(SINGLE_KINESIS_PRODUCER_PER_PARTITION, singleKinesisProducerPerPartition);
+			else
+				config.put(SINGLE_KINESIS_PRODUCER_PER_PARTITION, "false");
+
+			if(pauseConsumption != null)
+				config.put(PAUSE_CONSUMPTION, pauseConsumption);
+			else
+				config.put(PAUSE_CONSUMPTION, "true");
+
+			if(outstandingRecordsThreshold != null)
+				config.put(OUTSTANDING_RECORDS_THRESHOLD, outstandingRecordsThreshold);
+			else
+				config.put(OUTSTANDING_RECORDS_THRESHOLD, "500000");
+
+			if(sleepPeriod != null)
+				config.put(SLEEP_PERIOD, sleepPeriod);
+			else
+				config.put(SLEEP_PERIOD, "1000");
+
+			if(sleepCycles != null)
+				config.put(SLEEP_CYCLES, sleepCycles);
+			else
+				config.put(SLEEP_CYCLES, "10");
 
 			configs.add(config);
 
@@ -148,14 +247,13 @@ public class AmazonKinesisSinkConnector extends SinkConnector {
 
 	@Override
 	public String version() {
-		return VERSION;
+		return AppInfoParser.getVersion();
+
 	}
 
 	@Override
 	public ConfigDef config() {
-		//TBD: empty conf
 		return new ConfigDef();
-		
 	}
 
 }
